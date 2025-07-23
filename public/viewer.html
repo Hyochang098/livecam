@@ -1,16 +1,34 @@
 <!DOCTYPE html>
-<video id="remote" autoplay playsinline muted style="width:40vw; background:#000"></video>
+<h1>YOLO Object Detection Viewer</h1>
+<video id="remote" autoplay playsinline muted style="width:40vw; background:#000; border: 2px solid red;"></video>
+<div id="status" style="margin-top: 10px; font-family: monospace;">Status: Connecting...</div>
 <script>
 const pc = new RTCPeerConnection();
 const ws = new WebSocket(`ws://${location.host}/ws/room1`);
+const status = document.getElementById('status');
+
+function updateStatus(msg) {
+  status.textContent = `Status: ${msg}`;
+  console.log(msg);
+}
 
 ws.addEventListener('open', () => {
+  updateStatus('WebSocket connected, sending hello...');
   ws.send(JSON.stringify({ type: 'hello' }));
 });
 
 pc.ontrack = e => {
+  updateStatus('Video track received! Setting up stream...');
   remote.srcObject = e.streams[0];
-  remote.onloadedmetadata = () => remote.play().catch(() => {});
+  remote.onloadedmetadata = () => {
+    updateStatus('Video metadata loaded, starting playback...');
+    remote.play().catch((err) => {
+      updateStatus(`Play error: ${err.message}`);
+    });
+  };
+  remote.onplaying = () => {
+    updateStatus('🎥 Video is now playing with YOLO detection!');
+  };
 };
 
 pc.onicecandidate = e =>
@@ -18,11 +36,18 @@ pc.onicecandidate = e =>
 
 ws.onmessage = async ({ data }) => {
   const m = JSON.parse(data);
+  console.log('Received message:', m);
   if (m.type === 'offer') {
-    await pc.setRemoteDescription(m);
+    await pc.setRemoteDescription(new RTCSessionDescription({
+      type: 'offer',
+      sdp: m.sdp
+    }));
     const ans = await pc.createAnswer();
     await pc.setLocalDescription(ans);
-    ws.send(JSON.stringify(ans));
+    ws.send(JSON.stringify({
+      type: 'answer',
+      sdp: ans.sdp
+    }));
   } else if (m.type === 'candidate') {
     pc.addIceCandidate(m.candidate);
   }
