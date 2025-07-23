@@ -1,0 +1,18 @@
+<video id="remote" autoplay playsinline></video>
+<script>
+const pc = new RTCPeerConnection();
+const ws = new WebSocket(`ws://${location.host}/ws/room1`);
+
+pc.ontrack = e => remote.srcObject = e.streams[0];
+pc.onicecandidate = e => e.candidate && ws.send(JSON.stringify({type:'candidate',candidate:e.candidate}));
+
+ws.onmessage = async ({data})=>{
+  const m = JSON.parse(data);
+  if (m.type === 'offer') {
+    await pc.setRemoteDescription(m);
+    const ans = await pc.createAnswer();
+    await pc.setLocalDescription(ans);
+    ws.send(JSON.stringify(ans));
+  } else if (m.type === 'candidate') pc.addIceCandidate(m.candidate);
+};
+</script>

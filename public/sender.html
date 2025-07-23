@@ -1,0 +1,22 @@
+<video id="local" autoplay playsinline muted></video>
+<script>
+const pc = new RTCPeerConnection();
+const ws = new WebSocket(`ws://${location.host}/ws/room1`);
+
+navigator.mediaDevices.getUserMedia({video:true,audio:true})
+  .then(s => { local.srcObject = s; s.getTracks().forEach(t => pc.addTrack(t, s)); });
+
+pc.onicecandidate = e => e.candidate && ws.send(JSON.stringify({type:'candidate',candidate:e.candidate}));
+
+ws.onopen = async () => {
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  ws.send(JSON.stringify(offer));
+};
+
+ws.onmessage = async ({data})=>{
+  const m = JSON.parse(data);
+  if (m.type === 'answer') pc.setRemoteDescription(m);
+  else if (m.type === 'candidate') pc.addIceCandidate(m.candidate);
+};
+</script>
