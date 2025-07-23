@@ -1,22 +1,31 @@
-<video id="local" autoplay playsinline muted></video>
+<!DOCTYPE html>
+<video id="local" autoplay playsinline muted style="width:40vw"></video>
 <script>
 const pc = new RTCPeerConnection();
 const ws = new WebSocket(`ws://${location.host}/ws/room1`);
+let streamReady = false;
 
-navigator.mediaDevices.getUserMedia({video:true,audio:true})
-  .then(s => { local.srcObject = s; s.getTracks().forEach(t => pc.addTrack(t, s)); });
+navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+  .then(stream => {
+    local.srcObject = stream;
+    stream.getTracks().forEach(t => pc.addTrack(t, stream));
+    streamReady = true;
+  })
+  .catch(console.error);
 
-pc.onicecandidate = e => e.candidate && ws.send(JSON.stringify({type:'candidate',candidate:e.candidate}));
+pc.onicecandidate = e =>
+  e.candidate && ws.send(JSON.stringify({ type: 'candidate', candidate: e.candidate }));
 
-ws.onopen = async () => {
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  ws.send(JSON.stringify(offer));
-};
-
-ws.onmessage = async ({data})=>{
+ws.onmessage = async ({ data }) => {
   const m = JSON.parse(data);
-  if (m.type === 'answer') pc.setRemoteDescription(m);
-  else if (m.type === 'candidate') pc.addIceCandidate(m.candidate);
+  if (m.type === 'hello' && streamReady) {
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    ws.send(JSON.stringify(offer));
+  } else if (m.type === 'answer') {
+    pc.setRemoteDescription(m);
+  } else if (m.type === 'candidate') {
+    pc.addIceCandidate(m.candidate);
+  }
 };
 </script>
