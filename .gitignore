@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# YOLO 모델 파일
+*.pt
+*.onnx
+*.engine
+runs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 로그 및 데이터
+*.log
+*.mp4
+*.avi
+*.mov
+
+# Node.js (서버용)
+node_modules/
+
+# 환경 설정
+.env
+config.json 
